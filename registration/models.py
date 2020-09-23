@@ -33,6 +33,33 @@ class CustomUserManager(BaseUserManager):
             raise ValueError('Superuser must have is_superuser=True.')
 
         return self._create_user(email, password, **extra_fields)
+    
+    def with_perm(self, perm, is_active=True, include_superusers=True, backend=None, obj=None):
+        if backend is None:
+            backends = auth._get_backends(return_tuples=True)
+            if len(backends) == 1:
+                backend, _ = backends[0]
+            else:
+                raise ValueError(
+                    'You have multiple authentication backends configured and '
+                    'therefore must provide the `backend` argument.'
+                )
+        elif not isinstance(backend, str):
+            raise TypeError(
+                'backend must be a dotted import path string (got %r).'
+                % backend
+            )
+        else:
+            backend = auth.load_backend(backend)
+        if hasattr(backend, 'with_perm'):
+            return backend.with_perm(
+                perm,
+                is_active=is_active,
+                include_superusers=include_superusers,
+                obj=obj,
+            )
+        return self.none()
+
 
 
 class CustomUser(AbstractBaseUser, PermissionsMixin):
@@ -63,3 +90,11 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     EMAIL_FIELD = 'email'
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = []
+
+class RegisterUser(models.Model):
+    email = models.EmailField(max_length=150, unique=True)
+    phone_number = models.IntegerField()
+    password = models.CharField(max_length=100)
+
+    def __str__(self):
+        return f"{self.email}"
